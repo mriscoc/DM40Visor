@@ -1,101 +1,76 @@
 #!/usr/bin/env python3
 """
-快速查找 DM40 系列蓝牙万用表
+Quickly find DM40 series Bluetooth multimeter
 """
 
 import asyncio
+from typing import cast
 from bleak import BleakScanner
+from bleak.backends.device import BLEDevice
+from bleak.backends.scanner import AdvertisementData
 
 async def find_dm40_device():
-    """查找 DM40 设备"""
-    print("🔍 正在扫描 DM40 系列设备...")
+    """Find DM40 device"""
+    print("🔍 Scanning for DM40 series devices...")
     print("=" * 60)
 
-    devices = await BleakScanner.discover(timeout=10, return_adv=True)
+    devices = cast(
+        dict[str, tuple[BLEDevice, AdvertisementData]],
+        await BleakScanner.discover(timeout=8.0, return_adv=True),
+    )
 
     dm40_devices = []
     all_devices = []
 
-    for device, adv_data in devices.items():
-        # macOS 兼容性处理：尝试从不同位置获取设备名称
-        try:
-            name = device.name
-        except AttributeError:
-            try:
-                name = adv_data.local_name if adv_data else None
-            except AttributeError:
-                name = None
+    for address, (device, adv_data) in devices.items():
+      name = device.name or getattr(adv_data, "local_name", None) or "Unknown"
+      rssi = getattr(adv_data, "rssi", -1)
 
-        if not name:
-            name = "未知"
+      entry = {
+          "name": name,
+          "address": address,
+          "rssi": rssi,
+      }
+      all_devices.append(entry)
 
-        # 获取设备地址（macOS 兼容）
-        try:
-            address = device.address
-        except AttributeError:
-            try:
-                address = str(device)
-            except AttributeError:
-                address = "未知地址"
+      if "DM40" in name.upper() or "DM4" in name.upper():
+          dm40_devices.append(entry.copy())
 
-        # 获取信号强度（macOS 兼容）
-        try:
-            rssi = adv_data.rssi
-        except AttributeError:
-            try:
-                rssi = adv_data[1].rssi if adv_data and len(adv_data) > 1 else -1
-            except (AttributeError, IndexError):
-                rssi = -1
-
-        all_devices.append({
-            'name': name,
-            'address': address,
-            'rssi': rssi
-        })
-
-        # 检查是否是 DM40 系列
-        if "DM40" in name.upper() or "DM4" in name.upper():
-            dm40_devices.append({
-                'name': name,
-                'address': address,
-                'rssi': rssi
-            })
-
-    print(f"📡 总共发现 {len(all_devices)} 个蓝牙设备\n")
+    print(f"📡 Total discovered {len(all_devices)} Bluetooth devices\n")
 
     if dm40_devices:
-        print(f"✅ 发现 {len(dm40_devices)} 个 DM40 设备:\n")
+        print(f"✅ Discovered {len(dm40_devices)} DM40 devices:\n")
         for i, dev in enumerate(dm40_devices, 1):
-            print(f"设备 {i}:")
-            print(f"  名称: {dev['name']}")
-            print(f"  地址: {dev['address']}")
-            print(f"  信号强度: {dev['rssi']} dBm")
+            print(f"Device {i}:")
+            print(f"  Name: {dev['name']}")
+            print(f"  Address: {dev['address']}")
+            print(f"  Signal strength: {dev['rssi']} dBm")
             print("-" * 40)
 
-        # 显示如何使用第一个设备
-        print("\n📌 使用示例:")
-        print(f"device = Com_DM40A(device_addr='{dm40_devices[0]['address']}')")
+        # Display usage example for first device
+        print("\n📌 Usage example:")
+        print(f"device = Com_DM40(device_addr='{dm40_devices[0]['address']}')")
     else:
-        print("❌ 未发现 DM40 设备")
-        print("\n📋 发现的所有设备:")
-        for i, dev in enumerate(all_devices[:10], 1):  # 只显示前10个
+        print("❌ No DM40 devices found")
+        print("\n📋 All discovered devices:")
+        for i, dev in enumerate(all_devices[:10], 1):  # Only show first 10
             print(f"  {i}. {dev['name']} ({dev['address']}) - {dev['rssi']} dBm")
 
-        print("\n排查建议:")
-        print("1. 确保 DM40 万用表已开机")
-        print("2. 确保蓝牙功能已开启")
-        print("3. 确保设备处于可发现模式")
-        print("4. 尝试重新启动万用表的蓝牙")
-        print("5. 缩短与电脑的距离")
+        print("\nTroubleshooting suggestions:")
+        print("1. Ensure DM40 multimeter is powered on")
+        print("2. Ensure Bluetooth is enabled")
+        print("3. Ensure device is in discoverable mode")
+        print("4. Try restarting the multimeter's Bluetooth")
+        print("5. Reduce the distance to the computer")
 
 if __name__ == "__main__":
     try:
         asyncio.run(find_dm40_device())
     except KeyboardInterrupt:
-        print("\n扫描被中断")
+        print("\nScan interrupted")
     except Exception as e:
-        print(f"错误: {e}")
-        print("\n请确保:")
-        print("- 已安装 bleak: pip install bleak")
-        print("- 系统蓝牙已开启")
-        print("- 有蓝牙适配器")
+        print(f"Error: {e}")
+        print("\nPlease ensure:")
+        print("- bleak is installed: pip install bleak")
+        print("- System Bluetooth is enabled")
+        print("- System has Bluetooth adapter")

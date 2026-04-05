@@ -1,48 +1,48 @@
 #!/usr/bin/env python3
 """
-简单测试 dm40ble 模块
+Simple test of dm40ble module
 """
 import asyncio
-from dm40ble import Com_DM40A
+from dm40ble import Com_DM40
 
-async def test_dm40():
-    """测试 DM40 连接"""
-    print("🔍 开始测试 DM40...")
-    device = Com_DM40A()
+async def test_dm40() -> None:
+    """Test DM40 connection"""
+    print("🔍 Starting DM40 test...")
+    device = Com_DM40()
 
     try:
-        # 连接设备
-        print("📡 连接中...")
+        # Connect to device
+        print("📡 Connecting...")
         await device.connect()
-        print("✅ 连接成功!")
+        print("✅ Connection successful!")
 
-        # 设置回调
+        # Set callback
         data_received = False
 
-        def on_data(data, unit):
+        def on_data(data: float, unit: str, state: str) -> None:
             nonlocal data_received
             data_received = True
-            print(f"📊 收到数据: {data} {unit}")
+            print(f"📊 Data received: {data} {unit} ({state})")
 
         device.set_data_update_callback(on_data)
 
-        # 测试读取数据
-        print("\n📤 读取数据...")
+        # Test reading data
+        print("\n📤 Reading data...")
         for i in range(5):
-            data, unit = await device.get_data()
+            data, unit, state = await device.get_data()
             if data is not None:
-                print(f"  [{i+1}] 数据: {data} {unit}")
+                print(f"  [{i+1}] Data: {data} {unit} ({state})")
             else:
-                print(f"  [{i+1}] 无数据")
+                print(f"  [{i+1}] No data ({state})")
             await asyncio.sleep(0.5)
 
-        # 断开连接
-        print("\n🔌 断开连接...")
+        # Disconnect
+        print("\n🔌 Disconnecting...")
         await device.disconnect()
-        print("✅ 测试完成!")
+        print("✅ Test completed!")
 
     except Exception as e:
-        print(f"❌ 错误: {e}")
+        print(f"❌ Error: {e}")
         import traceback
         traceback.print_exc()
 

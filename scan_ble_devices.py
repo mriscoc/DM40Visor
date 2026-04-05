@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-蓝牙设备扫描脚本
-用于扫描周围的BLE设备并显示它们的地址和名称
+Bluetooth device scanning script
+Used to scan nearby BLE devices and display their addresses and names
 """
 
 import asyncio
@@ -10,24 +10,24 @@ import sys
 
 async def scan_ble_devices(timeout=10):
     """
-    扫描蓝牙设备
+    Scan Bluetooth devices
 
     Args:
-        timeout: 扫描时间（秒）
+        timeout: scan time (seconds)
 
     Returns:
-        list: 发现的设备列表，每个设备包含地址和名称
+        list: list of discovered devices, each device contains address and name
     """
-    print(f"开始扫描蓝牙设备... (扫描时间: {timeout}秒)")
+    print(f"Starting Bluetooth device scan... (scan time: {timeout}s)")
     print("-" * 60)
 
-    # 开始扫描
+    # Start scanning
     devices = await BleakScanner.discover(timeout=timeout, return_adv=True)
 
     device_list = []
 
-    for device, adv_data in devices.items():
-        if device.name:  # 只显示有名称的设备
+    for address, (device, adv_data) in devices.items():
+        if device.name:  # Only display devices with names
             device_info = {
                 'address': device.address,
                 'name': device.name,
@@ -35,74 +35,74 @@ async def scan_ble_devices(timeout=10):
             }
             device_list.append(device_info)
 
-            print(f"设备名称: {device_info['name']}")
-            print(f"MAC地址: {device_info['address']}")
-            print(f"信号强度: {device_info['rssi']} dBm")
+            print(f"Device name: {device_info['name']}")
+            print(f"MAC address: {device_info['address']}")
+            print(f"Signal strength: {device_info['rssi']} dBm")
             print("-" * 60)
 
     if not device_list:
-        print("未发现任何蓝牙设备")
-        print("可能的原因:")
-        print("1. 蓝牙未开启")
-        print("2. 没有BLE设备在广播")
-        print("3. 权限不足（Linux需要sudo，macOS需要系统权限）")
+        print("No Bluetooth devices found")
+        print("Possible reasons:")
+        print("1. Bluetooth not enabled")
+        print("2. No BLE devices broadcasting")
+        print("3. Insufficient permissions (Linux requires sudo, macOS requires system permissions)")
 
     return device_list
 
 async def scan_for_specific_device(device_name_keyword, timeout=15):
     """
-    扫描特定名称的设备
+    Scan for devices with specific name
 
     Args:
-        device_name_keyword: 设备名称关键字
-        timeout: 扫描时间
+        device_name_keyword: device name keyword
+        timeout: scan time
     """
-    print(f"正在搜索包含 '{device_name_keyword}' 的设备...")
+    print(f"Searching for devices containing '{device_name_keyword}'...")
     print("-" * 60)
 
     devices = await BleakScanner.discover(timeout=timeout, return_adv=True)
 
-    for device, adv_data in devices.items():
+    for address, (device, adv_data) in devices.items():
         if device.name and device_name_keyword.lower() in device.name.lower():
-            print(f"✓ 找到目标设备!")
-            print(f"  名称: {device.name}")
-            print(f"  地址: {device.address}")
-            print(f"  信号强度: {adv_data.rssi if adv_data else 'N/A'} dBm")
+            print(f"✓ Target device found!")
+            print(f"  Name: {device.name}")
+            print(f"  Address: {device.address}")
+            print(f"  Signal strength: {adv_data.rssi if adv_data else 'N/A'} dBm")
             return device.address
 
-    print(f"✗ 未找到包含 '{device_name_keyword}' 的设备")
+    print(f"✗ Device containing '{device_name_keyword}' not found")
     return None
 
 def main():
-    """主函数"""
+    """Main function"""
     if len(sys.argv) > 1:
-        # 模式1: 搜索特定设备
+        # Mode 1: search for specific device
         if sys.argv[1] == "--search":
             if len(sys.argv) < 3:
-                print("用法: python scan_ble_devices.py --search <设备名称关键词>")
+                print("Usage: python scan_ble_devices.py --search <device name keyword>")
                 sys.exit(1)
             keyword = sys.argv[2]
             timeout = int(sys.argv[3]) if len(sys.argv) > 3 else 15
             asyncio.run(scan_for_specific_device(keyword, timeout))
         else:
-            print("未知参数")
-            print("用法:")
-            print("  python scan_ble_devices.py                    # 扫描所有设备")
-            print("  python scan_ble_devices.py --search DM40      # 搜索DM40设备")
-            print("  python scan_ble_devices.py --search DM40 20   # 搜索20秒")
+            print("Unknown parameter")
+            print("Usage:")
+            print("  python scan_ble_devices.py                    # Scan all devices")
+            print("  python scan_ble_devices.py --search DM40      # Search for DM40 devices")
+            print("  python scan_ble_devices.py --search DM40 20   # Search for 20 seconds")
     else:
-        # 模式2: 扫描所有设备
+        # Mode 2: scan all devices
         try:
             asyncio.run(scan_ble_devices(timeout=10))
         except KeyboardInterrupt:
-            print("\n扫描被用户中断")
+            print("\nScan interrupted by user")
         except Exception as e:
-            print(f"扫描出错: {e}")
-            print("\n可能的解决方案:")
-            print("- 确保蓝牙已开启")
-            print("- Linux: 尝试使用 sudo 运行")
-            print("- macOS: 确保终端有蓝牙权限")
-            print("- Windows: 确保蓝牙服务已启动")
+            print(f"Scan error: {e}")
+            print("\nPossible solutions:")
+            print("- Ensure Bluetooth is enabled")
+            print("- Linux: Try running with sudo")
+            print("- macOS: Ensure terminal has Bluetooth permissions")
+            print("- Windows: Ensure Bluetooth service is running")
 
 if __name__ == "__main__":
     main()

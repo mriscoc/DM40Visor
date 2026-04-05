@@ -1,294 +1,302 @@
-# DM40 蓝牙万用表驱动
+# DM40 Bluetooth Multimeter Driver
 
-用于与 DM40A 数字万用表进行蓝牙通信的 Python 驱动程序。
+A Python driver for Bluetooth communication with the DM40 series digital multimeter.
 
-## 📋 目录
-- [功能特性](#功能特性)
-- [安装依赖](#安装依赖)
-- [获取设备地址](#获取设备地址)
-- [使用方法](#使用方法)
-- [API 文档](#api-文档)
-- [故障排除](#故障排除)
+## 📋 Table of Contents
+- [Features](#features)
+- [Installation](#installation)
+- [Getting the Device Address](#getting-the-device-address)
+- [Usage](#usage)
+- [API Reference](#api-reference)
+- [Troubleshooting](#troubleshooting)
 
-## ✨ 功能特性
+## ✨ Features
 
-- ✅ 蓝牙设备扫描与发现
-- ✅ 实时数据读取（电压/电流）
-- ✅ 模式切换（电压/电流模式）
-- ✅ 后台任务管理
-- ✅ 数据更新回调
-- ✅ 连接重试机制
-- ✅ 异步操作支持
+- ✅ Bluetooth device scanning and discovery
+- ✅ Real-time data reading (voltage / current)
+- ✅ Mode switching (voltage / current)
+- ✅ Background task management
+- ✅ Data update callbacks
+- ✅ Connection retry logic
+- ✅ Async operation support
 
-## 📦 安装依赖
+## 📦 Installation
 
 ```bash
 pip install bleak
 ```
 
-## 🔍 获取设备地址
+## 🔍 Getting the Device Address
 
-### 方法 1: 快速扫描 DM40 设备
+### Method 1: Quick DM40 scan
 
 ```bash
 python find_dm40.py
 ```
 
-输出示例：
+Example output:
 ```
-🔍 正在扫描 DM40 系列设备...
+🔍 Scanning for DM40 series devices...
 ============================================================
-✅ 发现 1 个 DM40 设备:
+✅ Found 1 DM40 device:
 
-设备 1:
-  名称: DM40A
-  地址: D7:ED:DF:91:FC:4D
-  信号强度: -45 dBm
+Device 1:
+  Name: DM40
+  Address: D7:ED:DF:91:FC:4D
+  Signal strength: -45 dBm
 ----------------------------------------
-📌 使用示例:
-device = Com_DM40A(device_addr='D7:ED:DF:91:FC:4D')
+📌 Usage example:
+device = Com_DM40(device_addr='D7:ED:DF:91:FC:4D')
 ```
 
-### 方法 2: 扫描所有蓝牙设备
+### Method 2: Scan all Bluetooth devices
 
 ```bash
 python scan_ble_devices.py
 ```
 
-### 方法 3: 按关键词搜索
+### Method 3: Search by keyword
 
 ```bash
 python scan_ble_devices.py --search DM40
-python scan_ble_devices.py --search DM40 20  # 扫描20秒
+python scan_ble_devices.py --search DM40 20  # scan for 20 seconds
 ```
 
-## 💻 使用方法
+## 💻 Usage
 
-### 基本使用
+### Basic usage
 
 ```python
-from dm40ble import Com_DM40A
+from dm40ble import Com_DM40
 
-# 创建设备实例
-device = Com_DM40A(device_addr="D7:ED:DF:91:FC:4D")
+# Create device instance (auto-discovers DM40 if no address given)
+device = Com_DM40(device_addr="A7:CD:DA:CC:60:05")
 
-# 设置数据更新回调
-def on_data_update(data, unit):
-    print(f"当前读数: {data} {unit}")
+# Set data update callback
+def on_data_update(data: float, unit: str, mode: str) -> None:
+    print(f"Reading: {data} {unit} ({mode})")
 
 device.set_data_update_callback(on_data_update)
 
-# 启动后台任务（每200ms采样一次）
+# Start background task (sample every 200 ms)
 device.run(loop_ms=200)
 
-# 等待连接成功
+# Wait for connection
 import time
 while device.get_state() != 1:
     time.sleep(0.1)
     if device.get_state() == -1:
-        print("连接失败")
+        print("Connection failed")
         break
 
-# 切换到电压模式
-device.set_mode(1)  # 1 = 电压模式
+# Switch to voltage mode
+device.set_mode(1)  # 1 = voltage mode
 
-# 切换到电流模式
-device.set_mode(2)  # 2 = 电流模式
+# Switch to current mode
+device.set_mode(2)  # 2 = current mode
 
-# 获取当前数据
-current_data = device.get_current_data()
-print(f"当前值: {current_data}")
+# Get latest data
+value, unit, mode = device.get_current_data()
+print(f"Current value: {value} {unit} ({mode})")
 
-# 停止后台任务
+# Stop background task
 device.stop()
 ```
 
-### 异步使用
+### Async usage
 
 ```python
 import asyncio
-from dm40ble import Com_DM40A
+from dm40ble import Com_DM40
 
 async def main():
-    async with Com_DM40A("D7:ED:DF:91:FC:4D") as device:
-        # 设置电压模式
+    async with Com_DM40("A7:CD:DA:CC:60:05") as device:
+        # Set voltage mode
         await device.set_voltage_mode()
 
-        # 获取数据
-        data, unit = await device.get_data()
-        print(f"电压: {data} {unit}")
+        # Read data
+        data, unit, mode = await device.get_data()
+        print(f"Voltage: {data} {unit} ({mode})")
 
-        # 设置电流模式
+        # Set current mode
         await device.set_current_mode()
 
-        data, unit = await device.get_data()
-        print(f"电流: {data} {unit}")
+        data, unit, mode = await device.get_data()
+        print(f"Current: {data} {unit} ({mode})")
 
 asyncio.run(main())
 ```
 
-### 完整示例
+### Full example
 
 ```python
-from dm40ble import Com_DM40A
+from dm40ble import Com_DM40
 import time
 
-def data_callback(data, unit):
-    print(f"📊 实时数据: {data:.2f} {unit}")
+def data_callback(data: float, unit: str, mode: str) -> None:
+    print(f"📊 Live reading: {data:.2f} {unit} ({mode})")
 
-# 初始化设备
-device = Com_DM40A(
-    device_addr="D7:ED:DF:91:FC:4D",
+# Initialise device (omit device_addr to auto-discover)
+device = Com_DM40(
+    device_addr="A7:CD:DA:CC:60:05",
     max_retry=3
 )
 
-# 设置回调
+# Set callback
 device.set_data_update_callback(data_callback)
 
-# 启动后台任务
-print("正在连接设备...")
-device.run(loop_ms=500)  # 每500ms采样
+# Start background task
+print("Connecting to device...")
+device.run(loop_ms=500)  # sample every 500 ms
 
-# 等待连接
+# Wait for connection
 while True:
     state = device.get_state()
     if state == 1:
-        print("✓ 连接成功!")
+        print("✓ Connected!")
         break
     elif state == -1:
-        print("✗ 连接失败")
+        print("✗ Connection failed")
         device.stop()
         exit(1)
     time.sleep(0.1)
 
-# 切换模式并读取数据
+# Switch modes and read data
 try:
-    print("\n切换到电压模式...")
+    print("\nSwitching to voltage mode...")
     device.set_mode(1)
     time.sleep(2)
 
-    print("\n切换到电流模式...")
+    print("\nSwitching to current mode...")
     device.set_mode(2)
     time.sleep(2)
 
-    # 保持运行
+    # Keep running
     while True:
         time.sleep(1)
 
 except KeyboardInterrupt:
-    print("\n正在停止...")
+    print("\nStopping...")
     device.stop()
-    print("完成")
+    print("Done")
 ```
 
-## 📖 API 文档
+## 📖 API Reference
 
-### `Com_DM40A` 类
+### `Com_DM40` class
 
-#### 初始化参数
-- `device_addr` (str): 蓝牙设备MAC地址
-- `max_retry` (int): 连接重试次数，默认3次
+#### Constructor parameters
+- `device_addr` (str, optional): Bluetooth device MAC address. If omitted, the driver auto-discovers any DM40 device nearby.
+- `max_retry` (int): Number of connection retries. Default: 3.
 
-#### 主要方法
+#### Methods
 
-| 方法 | 说明 | 参数 | 返回值 |
-|------|------|------|--------|
-| `run(loop_ms)` | 启动后台任务 | 采样间隔(ms) | None |
-| `stop()` | 停止后台任务 | - | None |
-| `set_data_update_callback(callback)` | 设置数据回调 | 回调函数 | None |
-| `get_current_data()` | 获取最新数据 | - | float/None |
-| `get_state()` | 获取状态 | - | int (0=空闲, 1=运行中, -1=错误) |
-| `set_mode(mode)` | 设置模式 | 1=电压, 2=电流 | None |
-| `connect()` | 手动连接 | - | bool |
-| `disconnect()` | 断开连接 | - | None |
-| `get_data()` | 获取单次数据 | - | (data, unit) |
-| `set_voltage_mode()` | 设置电压模式 | - | bool |
-| `set_current_mode()` | 设置电流模式 | - | bool |
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `run(loop_ms)` | Start background task | Sampling interval (ms) | None |
+| `stop()` | Stop background task | — | None |
+| `set_data_update_callback(callback)` | Set data callback | Callback `(float, str, str)` | None |
+| `get_current_data()` | Get latest cached data | — | `(float\|None, str, str)` |
+| `get_state()` | Get task state | — | int (0=idle, 1=running, -1=error) |
+| `set_mode(mode)` | Set mode (legacy) | 1=voltage, 2=current | None |
+| `connect()` | Connect manually | — | bool |
+| `disconnect()` | Disconnect | — | None |
+| `get_data()` | Read one measurement | — | `(float\|None, str, str)` |
+| `set_voltage_mode()` | Set DC voltage mode | — | bool |
+| `set_current_mode()` | Set DC current mode | — | bool |
+| `run_coroutine(coro)` | Run coroutine on internal loop | Coroutine | Any |
 
-#### 状态码
-- `0`: 空闲/未启动
-- `1`: 运行中/已连接
-- `-1`: 错误/连接失败
+#### State codes
+- `0`: Idle / not started
+- `1`: Running / connected
+- `-1`: Error / connection failed
 
-## 🔧 协议说明
+## 🔧 Protocol Notes
 
-### 通信命令
-- **获取数据**: `AF 05 03 09 00 40`
-- **电压模式**: `AF 05 03 06 01 30 12`
-- **电流模式**: `AF 05 03 06 01 39 09`
+### Commands
+- **Read data**: `AF 05 03 09 00 40`
+- **Voltage mode**: `AF 05 03 06 01 30 12`
+- **Current mode**: `AF 05 03 06 01 39 09`
 
-### 响应格式解析
+### Response format
 ```
-响应数据: [字节0...字节N]
-- 字节5: 单位标识
-  - 0x30 = mV (毫伏)
-  - 0x39 = mA (毫安)
+Response bytes: [byte0 ... byteN]
+- byte[5]: unit identifier
+  - 0x30 = mV (millivolts)
+  - 0x39 = mA (milliamps)
 
-- 字节-8: 缩放系数
-  - 0x18 = 0.1
+- byte[-8]: scale factor
+  - 0x18 =  0.1
   - 0x19 = -0.1
-  - 0x16 = 1
+  - 0x16 =  1
   - 0x17 = -1
   - 0x15 = -0.01
-  - 0x14 = 0.01
+  - 0x14 =  0.01
 
-- 字节-3 和 字节-2: 数据值 (小端序)
+- byte[-3] and byte[-2]: raw value (little-endian)
   data = byte[-3] | (byte[-2] << 8)
 
-最终值 = data × 缩放系数
+Final value = data × scale_factor
 ```
 
-## 🐛 故障排除
+### BLE UUIDs (DM40C profile)
+| Role | UUID |
+|------|------|
+| Service | `0000fff0-0000-1000-8000-00805f9b34fb` |
+| Write (TX) | `0000fff1-0000-1000-8000-00805f9b34fb` |
+| Notify (RX) | `0000fff2-0000-1000-8000-00805f9b34fb` |
 
-### 问题 1: 蓝牙未开启
-**错误**: `Bluetooth device is turned off`
+## 🐛 Troubleshooting
 
-**解决**:
-- **macOS**: 系统设置 → 蓝牙 → 开启
+### Issue 1: Bluetooth is off
+**Error**: `Bluetooth device is turned off`
+
+**Fix**:
+- **Windows**: Settings → Bluetooth → On
+- **macOS**: System Settings → Bluetooth → On
 - **Linux**: `sudo systemctl start bluetooth`
-- **Windows**: 设置 → 蓝牙 → 开启
 
-### 问题 2: 权限不足
-**错误**: `Permission denied` 或 `Access denied`
+### Issue 2: Insufficient permissions
+**Error**: `Permission denied` or `Access denied`
 
-**解决**:
-- **Linux**: 使用 `sudo` 运行或添加用户到 `bluetooth` 组
+**Fix**:
+- **Linux**: Run with `sudo` or add user to the `bluetooth` group:
   ```bash
   sudo usermod -a -G bluetooth $USER
   ```
-- **macOS**: 系统设置 → 隐私与安全性 → 蓝牙 → 允许终端访问
+- **macOS**: System Settings → Privacy & Security → Bluetooth → allow Terminal
 
-### 问题 3: 找不到设备
-**解决**:
-1. 确保 DM40 万用表已开机
-2. 确保蓝牙功能已启用
-3. 尝试重启万用表
-4. 缩短与电脑的距离（< 5米）
-5. 确保设备未连接其他设备
+### Issue 3: Device not found
+**Fix**:
+1. Make sure the DM40 multimeter is powered on
+2. Make sure Bluetooth is enabled on the meter
+3. Try restarting the meter
+4. Move closer to the computer (< 5 m)
+5. Make sure the device is not already connected to another host
 
-### 问题 4: 连接不稳定
-**解决**:
-- 增加重试次数: `Com_DM40A(max_retry=5)`
-- 增加采样间隔: `device.run(loop_ms=1000)`
-- 检查电池电量
+### Issue 4: Unstable connection
+**Fix**:
+- Increase retries: `Com_DM40(max_retry=5)`
+- Increase sampling interval: `device.run(loop_ms=1000)`
+- Check battery level
 
-### 问题 5: 数据解析错误
-**解决**:
-- 检查设备型号是否为 DM40A
-- 打印原始响应: `print(response.hex())`
-- 确认 UUID 是否正确
+### Issue 5: Data parsing errors
+**Fix**:
+- Verify the device model is DM40/DM40C
+- Print raw response: `print(response.hex())`
+- Confirm the BLE UUIDs match the table above
 
-## 📝 注意事项
+## 📝 Notes
 
-1. **蓝牙适配器**: 确保电脑有蓝牙适配器
-2. **距离**: 设备应在蓝牙范围内（通常<10米）
-3. **干扰**: 避免强电磁干扰环境
-4. **电量**: 确保万用表电量充足
-5. **独占访问**: 确保设备未被其他程序占用
+1. **Bluetooth adapter**: Make sure the computer has a Bluetooth adapter
+2. **Range**: Keep the device within Bluetooth range (typically < 10 m)
+3. **Interference**: Avoid environments with strong electromagnetic interference
+4. **Battery**: Ensure the multimeter has sufficient battery
+5. **Exclusive access**: Ensure the device is not already in use by another application
 
-## 📄 许可证
+## 📄 License
 
 MIT License
 
-## 鸣谢
+## Acknowledgements
 - https://blog.csdn.net/weixin_41929418/article/details/149218095

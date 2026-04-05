@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DM40A 蓝牙万用表 - 实时数据监控</title>
+    <title>DM40 Bluetooth Multimeter - Real-Time Data Monitoring</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * {
@@ -207,8 +207,8 @@
     <div class="container">
         <div class="device-card">
             <div class="header">
-                <h1>DM40A 蓝牙万用表</h1>
-                <span id="statusBadge" class="status-badge status-disconnected">未连接</span>
+                <h1 id="deviceTitle">DM40 Bluetooth Multimeter</h1>
+                <span id="statusBadge" class="status-badge status-disconnected">Disconnected</span>
             </div>
 
             <div class="display">
@@ -218,38 +218,40 @@
             </div>
 
             <div class="controls-section">
-                <!-- 连接控制 -->
-                <button class="btn btn-primary" id="connectBtn" onclick="connect()">连接设备</button>
-                <button class="btn btn-danger" id="disconnectBtn" onclick="disconnect()" style="display: none;">断开连接</button>
+                <!-- Connection Control -->
+                <button class="btn btn-primary" id="connectBtn" onclick="connect()">Connect Device</button>
+                <button class="btn btn-danger" id="disconnectBtn" onclick="disconnect()" style="display: none;">Disconnect</button>
 
-                <!-- 电压模式 -->
+                <!-- Voltage Mode -->
                 <div class="control-group">
-                    <div class="control-group-title">电压测量</div>
+                    <div class="control-group-title">Voltage Measurement</div>
                     <div class="btn-grid">
                         <button class="btn btn-mode" id="dcVoltageBtn" onclick="setDcVoltageMode()" disabled>DCV</button>
                         <button class="btn btn-mode" id="acVoltageBtn" onclick="setAcVoltageMode()" disabled>ACV</button>
+                        <button class="btn btn-mode" id="acDcVoltageBtn" onclick="setAcDcVoltageMode()" disabled>ACV+DCV</button>
                     </div>
                 </div>
 
-                <!-- 电流模式 -->
+                <!-- Current Mode -->
                 <div class="control-group">
-                    <div class="control-group-title">电流测量</div>
+                    <div class="control-group-title">Current Measurement</div>
                     <div class="btn-grid">
                         <button class="btn btn-mode" id="dcCurrentBtn" onclick="setDcCurrentMode()" disabled>DCA</button>
                         <button class="btn btn-mode" id="acCurrentBtn" onclick="setAcCurrentMode()" disabled>ACA</button>
+                        <button class="btn btn-mode" id="acDcCurrentBtn" onclick="setAcDcCurrentMode()" disabled>ACA+DCA</button>
                     </div>
                 </div>
 
-                <!-- 其他测量模式 -->
+                <!-- Other measurement modes -->
                 <div class="control-group">
-                    <div class="control-group-title">其他测量</div>
+                    <div class="control-group-title">Other measurements</div>
                     <div class="btn-grid">
-                        <button class="btn btn-mode" id="resistanceBtn" onclick="setResistanceMode()" disabled>电阻</button>
-                        <button class="btn btn-mode" id="capacitanceBtn" onclick="setCapacitanceMode()" disabled>电容</button>
-                        <button class="btn btn-mode" id="frequencyBtn" onclick="setFrequencyMode()" disabled>频率</button>
-                        <button class="btn btn-mode" id="temperatureBtn" onclick="setTemperatureMode()" disabled>温度</button>
-                        <button class="btn btn-mode" id="diodeBtn" onclick="setDiodeMode()" disabled>二极管</button>
-                        <button class="btn btn-mode" id="continuityBtn" onclick="setContinuityMode()" disabled>通断</button>
+                        <button class="btn btn-mode" id="resistanceBtn" onclick="setResistanceMode()" disabled>Resistance</button>
+                        <button class="btn btn-mode" id="capacitanceBtn" onclick="setCapacitanceMode()" disabled>Capacitance</button>
+                        <button class="btn btn-mode" id="frequencyBtn" onclick="setFrequencyMode()" disabled>Frequency</button>
+                        <button class="btn btn-mode" id="temperatureBtn" onclick="setTemperatureMode()" disabled>Temperature</button>
+                        <button class="btn btn-mode" id="diodeBtn" onclick="setDiodeMode()" disabled>Diode</button>
+                        <button class="btn btn-mode" id="continuityBtn" onclick="setContinuityMode()" disabled>Continuity</button>
                     </div>
                 </div>
             </div>
@@ -263,47 +265,118 @@
         let isConnected = false;
         let currentMode = '';
 
-        // WebSocket 连接成功
+        function updateDeviceTitle(deviceName) {
+            const title = document.getElementById('deviceTitle');
+            const name = (deviceName || 'DM40').trim() || 'DM40';
+            title.textContent = `${name} Bluetooth Multimeter`;
+        }
+
+        // WebSocket Connection successful
         socket.on('connected', (data) => {
-            addLog('WebSocket 已连接');
+            addLog('WebSocket Connected');
         });
 
-        // 实时数据更新
+        // Real-time data updates
         socket.on('data_update', (data) => {
             updateDisplay(data);
+        });
+
+        // Instant mode button highlight from server
+        socket.on('mode_update', (data) => {
+            if (data && data.mode) {
+                currentMode = data.mode;
+                document.getElementById('modeIndicator').textContent = currentMode;
+                updateActiveButton();
+            }
+        });
+
+        // Explicit connection status updates
+        socket.on('status_update', (data) => {
+            if (!data || !data.status) {
+                return;
+            }
+
+            if (data.device_name) {
+                updateDeviceTitle(data.device_name);
+            }
+
+            if (data.status === 'connected') {
+                if (!isConnected) {
+                    isConnected = true;
+                }
+                updateStatus('connected');
+                addLog('Device connected');
+            } else if (data.status === 'connecting') {
+                updateStatus('connecting');
+            } else if (data.status === 'disconnected') {
+                resetDisplay();
+            } else if (data.status === 'error') {
+                addLog('Device connection error');
+                updateStatus('disconnected');
+            }
         });
 
         function updateDisplay(data) {
             const valueDisplay = document.getElementById('valueDisplay');
             const unitDisplay = document.getElementById('unitDisplay');
             const modeIndicator = document.getElementById('modeIndicator');
-            const statusBadge = document.getElementById('statusBadge');
+
+            function formatMeasurement(value, unit) {
+                if (typeof value !== 'number') {
+                    if (unit === 'V' && typeof value === 'string') {
+                        const parsed = Number(value);
+                        if (Number.isFinite(parsed) && Math.abs(parsed) < 1) {
+                            return { text: (parsed * 1000).toFixed(1), unit: 'mV' };
+                        }
+                        return { text: value, unit: 'V' };
+                    }
+                    return { text: value, unit: unit || '' };
+                }
+
+                // Keep voltage readability consistent with DCV: use mV for sub-volt values.
+                if (unit === 'V' && Math.abs(value) < 1) {
+                    return { text: (value * 1000).toFixed(1), unit: 'mV' };
+                }
+
+                return { text: value.toFixed(2), unit: unit || '' };
+            }
+
+            if (data.mode) {
+                currentMode = data.mode;
+                modeIndicator.textContent = currentMode;
+                updateActiveButton();
+            }
 
             if (data.value !== null && data.value !== undefined) {
-                valueDisplay.textContent = data.value.toFixed(2);
+                const formatted = formatMeasurement(data.value, data.unit);
+                valueDisplay.textContent = formatted.text;
                 valueDisplay.classList.remove('empty');
-                unitDisplay.textContent = data.unit;
-                modeIndicator.textContent = data.mode || '';
-                currentMode = data.mode || '';
-                statusBadge.textContent = '已连接';
-                statusBadge.className = 'status-badge status-connected';
-                isConnected = true;
-                updateActiveButton();
+                if (data.value === 'OL') {
+                    unitDisplay.textContent = '';
+                }
+                if (formatted.unit) {
+                    unitDisplay.textContent = formatted.unit;
+                }
+                if (!isConnected) {
+                    isConnected = true;
+                    updateStatus('connected');
+                }
             } else {
                 valueDisplay.textContent = '---';
                 valueDisplay.classList.add('empty');
-                unitDisplay.textContent = '';
-                modeIndicator.textContent = '';
+                // Keep the last unit — do not clear it on a transient null reading
             }
         }
 
         function updateActiveButton() {
-            // 移除所有激活状态
+            // Deactivate all active statuses
             document.querySelectorAll('.btn-mode').forEach(btn => btn.classList.remove('active'));
 
-            // 根据当前模式设置激活状态
-            if (currentMode.includes('DC Voltage')) document.getElementById('dcVoltageBtn').classList.add('active');
+            // Set the activation status based on the current configuration
+            if (currentMode.includes('AC+DC Voltage')) document.getElementById('acDcVoltageBtn').classList.add('active');
+            else if (currentMode.includes('DC Voltage')) document.getElementById('dcVoltageBtn').classList.add('active');
             else if (currentMode.includes('AC Voltage')) document.getElementById('acVoltageBtn').classList.add('active');
+            else if (currentMode.includes('AC+DC Current')) document.getElementById('acDcCurrentBtn').classList.add('active');
             else if (currentMode.includes('DC Current')) document.getElementById('dcCurrentBtn').classList.add('active');
             else if (currentMode.includes('AC Current')) document.getElementById('acCurrentBtn').classList.add('active');
             else if (currentMode.includes('Resistance')) document.getElementById('resistanceBtn').classList.add('active');
@@ -315,14 +388,14 @@
         }
 
         async function connect() {
-            addLog('正在连接设备...');
+            addLog('Connecting to device...');
             updateStatus('connecting');
             try {
                 const response = await fetch('/api/connect', { method: 'POST' });
                 const result = await response.json();
                 addLog(result.message);
             } catch (error) {
-                addLog('连接失败: ' + error.message);
+                addLog('Connection failed: ' + error.message);
                 updateStatus('disconnected');
             }
         }
@@ -334,48 +407,56 @@
                 addLog(result.message);
                 resetDisplay();
             } catch (error) {
-                addLog('断开失败: ' + error.message);
+                addLog('Disconnection failed: ' + error.message);
             }
         }
 
         async function setDcVoltageMode() {
-            await sendModeCommand('/api/mode/dc_voltage', '直流电压');
+            await sendModeCommand('/api/mode/dc_voltage', 'DC Voltage');
         }
 
         async function setAcVoltageMode() {
-            await sendModeCommand('/api/mode/ac_voltage', '交流电压');
+            await sendModeCommand('/api/mode/ac_voltage', 'AC Voltage');
+        }
+
+        async function setAcDcVoltageMode() {
+            await sendModeCommand('/api/mode/ac_dc_voltage', 'AC+DC Voltage');
         }
 
         async function setDcCurrentMode() {
-            await sendModeCommand('/api/mode/dc_current', '直流电流');
+            await sendModeCommand('/api/mode/dc_current', 'DC Current');
         }
 
         async function setAcCurrentMode() {
-            await sendModeCommand('/api/mode/ac_current', '交流电流');
+            await sendModeCommand('/api/mode/ac_current', 'AC Current');
+        }
+
+        async function setAcDcCurrentMode() {
+            await sendModeCommand('/api/mode/ac_dc_current', 'AC+DC Current');
         }
 
         async function setResistanceMode() {
-            await sendModeCommand('/api/mode/resistance', '电阻');
+            await sendModeCommand('/api/mode/resistance', 'Resistance');
         }
 
         async function setCapacitanceMode() {
-            await sendModeCommand('/api/mode/capacitance', '电容');
+            await sendModeCommand('/api/mode/capacitance', 'Capacitance');
         }
 
         async function setFrequencyMode() {
-            await sendModeCommand('/api/mode/frequency', '频率');
+            await sendModeCommand('/api/mode/frequency', 'Frequency');
         }
 
         async function setTemperatureMode() {
-            await sendModeCommand('/api/mode/temperature', '温度');
+            await sendModeCommand('/api/mode/temperature', 'Temperature');
         }
 
         async function setDiodeMode() {
-            await sendModeCommand('/api/mode/diode', '二极管');
+            await sendModeCommand('/api/mode/diode', 'Diode');
         }
 
         async function setContinuityMode() {
-            await sendModeCommand('/api/mode/continuity', '通断');
+            await sendModeCommand('/api/mode/continuity', 'Continuity');
         }
 
         async function sendModeCommand(url, name) {
@@ -384,7 +465,7 @@
                 const result = await response.json();
                 addLog(result.message);
             } catch (error) {
-                addLog(`${name}模式设置失败: ` + error.message);
+                addLog(`${name} mode setup failed: ` + error.message);
             }
         }
 
@@ -396,19 +477,19 @@
 
             switch (status) {
                 case 'connecting':
-                    statusBadge.textContent = '连接中...';
+                    statusBadge.textContent = 'Connecting...';
                     statusBadge.className = 'status-badge status-connecting pulse';
                     connectBtn.disabled = true;
                     break;
                 case 'connected':
-                    statusBadge.textContent = '已连接';
+                    statusBadge.textContent = 'Connected';
                     statusBadge.className = 'status-badge status-connected';
                     connectBtn.style.display = 'none';
                     disconnectBtn.style.display = 'block';
                     modeButtons.forEach(btn => btn.disabled = false);
                     break;
                 case 'disconnected':
-                    statusBadge.textContent = '未连接';
+                    statusBadge.textContent = 'Disconnected';
                     statusBadge.className = 'status-badge status-disconnected';
                     connectBtn.disabled = false;
                     connectBtn.style.display = 'block';
@@ -426,6 +507,7 @@
             document.getElementById('valueDisplay').classList.add('empty');
             document.getElementById('unitDisplay').textContent = '';
             document.getElementById('modeIndicator').textContent = '';
+            updateDeviceTitle('DM40');
             updateStatus('disconnected');
             isConnected = false;
             currentMode = '';
@@ -440,7 +522,7 @@
             logDisplay.insertBefore(entry, logDisplay.firstChild);
         }
 
-        addLog('页面已加载，等待连接...');
+        addLog('Page loaded, waiting for connection...');
     </script>
 </body>
 </html>

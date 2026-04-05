@@ -1,29 +1,27 @@
 #!/usr/bin/env python3
 """
-获取 macOS 上已配对的蓝牙设备 UUID
+Get Bluetooth device UUIDs paired on macOS
 """
 import asyncio
-from bleak import BleakScanner
-from Foundation import NSBundle
-import CoreBluetooth
+from bleak import BleakClient, BleakScanner
 
 async def find_paired_dm40():
-    """查找已配对的 DM40 设备"""
-    print("🔍 扫描已配对的 DM40 设备...")
+    """Find paired DM40 device"""
+    print("🔍 Scanning paired DM40 devices...")
     print("=" * 60)
 
-    # 扫描设备
+    # Scan devices
     devices = await BleakScanner.discover(timeout=10, return_adv=True)
 
     dm40_candidates = []
 
-    for device, adv_data in devices.items():
+    for address, (device, adv_data) in devices.items():
         try:
             address = device.address
         except AttributeError:
             address = str(device)
 
-        # 尝试连接每个设备并读取名称
+        # Try connecting to each device and read name
         try:
             async with BleakClient(address, timeout=2) as client:
                 try:
@@ -35,18 +33,18 @@ async def find_paired_dm40():
                             'name': name,
                             'address': address
                         })
-                        print(f"✅ 找到: {name}")
-                        print(f"   地址: {address}")
+                        print(f"✅ Found: {name}")
+                        print(f"   Address: {address}")
                 except:
                     pass
         except:
             pass
 
     if dm40_candidates:
-        print(f"\n📌 使用第一个设备的地址:")
-        print(f"  device = Com_DM40A(device_addr='{dm40_candidates[0]['address']}')")
+        print(f"\n📌 Usage with first device address:")
+        print(f"  device = Com_DM40(device_addr='{dm40_candidates[0]['address']}')")
     else:
-        print("\n❌ 未找到 DM40 设备")
+        print("\n❌ No DM40 devices found")
 
 if __name__ == "__main__":
     asyncio.run(find_paired_dm40())
