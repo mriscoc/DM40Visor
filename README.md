@@ -2,6 +2,9 @@
 
 A Python driver for Bluetooth communication with the DM40 series digital multimeter.
 
+<img width="668" height="398" alt="ALIENTEK-DM40" src="https://github.com/user-attachments/assets/c11233ae-ed75-4b42-9069-f2a03ed68140" />
+
+
 ## 📋 Table of Contents
 - [Features](#features)
 - [Installation](#installation)
@@ -25,6 +28,12 @@ A Python driver for Bluetooth communication with the DM40 series digital multime
 ```bash
 pip install bleak
 ```
+
+## Windows and Linux controller
+The [Windows and Linux](https://www.patreon.com/posts/dm40visor-155598531) versions of the DM40Visor were built on the foundations of this project.  
+  
+
+![DM40_Winapp](https://github.com/user-attachments/assets/5eaf79a4-81b0-4095-8ccd-cee291b2e41d)
 
 ## 🔍 Getting the Device Address
 
