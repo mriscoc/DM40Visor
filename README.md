@@ -2,6 +2,9 @@
 
 A Python driver for Bluetooth communication with the DM40 series digital multimeter.
 
+<img width="668" height="398" alt="ALIENTEK-DM40" src="https://github.com/user-attachments/assets/c11233ae-ed75-4b42-9069-f2a03ed68140" />
+
+
 ## 📋 Table of Contents
 - [Features](#features)
 - [Installation](#installation)
